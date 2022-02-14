@@ -1,16 +1,16 @@
-README
+README for code on THAMP data
 
-*** 1. SYSTEM REQUIREMENTS ***
+##1. SYSTEM REQUIREMENTS
 
-All software dependencies and operating systems (including version numbers):
+###All software dependencies and operating systems (including version numbers):
 RStudio
 MAC OS 12.0.1
 
-Software versions:
+###Software versions:
 R version 4.0.5 (2021-03-31)
 Python version 3.7.0 
 
-Required Python libraries:
+###Required Python libraries:
 keras == 2.5.0
 tensorflow == 2.5.0
 sklearn == 1.0.1
@@ -19,7 +19,7 @@ numpy == 1.19.2
 matplotlib == 2.2.3
 joblib == 1.0.1
 
-Required R libraries:
+###Required R libraries:
 readxl == 1.3.1
 tidyverse == 1.3.1
 ggplot2 == 3.3.5
@@ -32,17 +32,17 @@ optparse = 1.7.1
 showtext == 0.9-4
 Cairo == 1.5-12.2
 
-Any required non-standard hardware:
+###Any required non-standard hardware:
 Not Applicable
 
 
-*** 2. INSTALLATION GUIDE ***
+##2. INSTALLATION GUIDE
 Not Applicable
 
 
-*** 3. INSTRUCTION ***
+##3. INSTRUCTION
 
-** Neural network architecture selection **
+###Neural network architecture selection
 
 Run ANN_dim_reduce.py from "src/" folder:
 Before running, delete the '#' at the beginning of line 25;
@@ -52,7 +52,7 @@ Before running, set the root path at line 22.
 
 Quality metrics for two-dimensional embedding with varying neural network architectures are saved in folder  "../output/dim_sel".
 
-** Main analysis **
+###Main analysis
 
 Run ANN_dim_reduce.py from "src/" folder:
 Before running, delete the entire "../output" folder and add a '#' at the beginning of line 25.
@@ -89,7 +89,7 @@ Lines 1933-1969 analyzes treatment outcome in MDS.
 Lines 1962-1964 generate Fig. 6d.
 Lines 1967-1969 generate Supplementary Fig. 4.
 
-*** 4. POSTSCRIPT ***
+##4. POSTSCRIPT
 Total expected run time on a 'normal' desktop computer:
 8 hours
 
