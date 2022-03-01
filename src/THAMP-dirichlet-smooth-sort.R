@@ -32,7 +32,7 @@ option_list <- list(
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
-root<- "THAMP-data-and-code/src"
+root<- "THAMP/src"
 setwd(root)
 opt$indir <- '../output/2d_full_data/'
 opt$outdir <- '../output/'
@@ -177,346 +177,351 @@ print("------------------------ part 2: axis rotation done !!-------------")
 ###organize data###
 karyotype <- c(kar.num.start:kar.num.end)
 mutation <- c(mut.num.start:mut.num.end)
-
-mutation_or_karyotype<-karyotype
-Mutation <- cligene.data[, c(1:5,mutation_or_karyotype)]
-
-for (j in 6:ncol(Mutation)) {
-  Mutation[,j] <- as.numeric(Mutation[,j])
-}
-
-genes <- colnames(Mutation)[6:ncol(Mutation)]
-diseases <- unique(Mutation$Diagnosis)
-
-diagnosis.n <- array(NA, length(diseases))
-for (m in 1:length(diseases)) {
-  diagnosis.n[m] <- sum(Mutation$Diagnosis == diseases[m])
-}
-
-diagnosis.pos <- array(NA, dim=c(length(genes),length(diseases)))
-diagnosis.tot <- array(NA, dim=c(length(genes),length(diseases)))
-for (j in 1:length(genes)) {
+for (type_dc in c("karyotype", "mutation")) {
+  if (type_dc == "karyotype") {
+    mutation_or_karyotype<-karyotype
+  }else if(type_dc == "mutation"){
+    mutation_or_karyotype<-mutation
+  }
+  
+  Mutation <- cligene.data[, c(1:5,mutation_or_karyotype)]
+  
+  for (j in 6:ncol(Mutation)) {
+    Mutation[,j] <- as.numeric(Mutation[,j])
+  }
+  
+  genes <- colnames(Mutation)[6:ncol(Mutation)]
+  diseases <- unique(Mutation$Diagnosis)
+  
+  diagnosis.n <- array(NA, length(diseases))
   for (m in 1:length(diseases)) {
-    diagnosis.pos[j, m] <- sum(Mutation$Diagnosis == diseases[m] &
-                                 Mutation[, which(genes==genes[j])+5] == 1,
-                               na.rm = TRUE)
-    diagnosis.tot[j, m] <- sum(Mutation$Diagnosis == diseases[m] &
-                                 !is.na(Mutation[, which(genes==genes[j])+5]),
-                               na.rm = TRUE)
-  }
-}
-colnames(diagnosis.pos) <- diseases
-rownames(diagnosis.pos) <- genes
-colnames(diagnosis.tot) <- diseases
-rownames(diagnosis.tot) <- genes
-
-
-###dirichlet process clustering###
-
-### helper functions ###
-rs <- (0:.5e3)/1e3*2
-
-binomial.likelihood.scan <- function(n, pos) {
-  prob <- c()
-  for (t in 1:length(rs)) {
-    r <- rs[t]
-    prob <- c(prob, r^pos * (1-r)^(n-pos))
-  }
-  prob
-}
-
-sample.beta <- function(n, pos) {
-  log.prob <- c()
-  for (t in 1:length(rs)) {
-    r <- rs[t]
-    if (pos==0) {
-      log.prob <- c(log.prob, log(1-r)*(n-pos))
-    }
-    if (pos==n) {
-      log.prob <- c(log.prob, log(r)*pos)
-    }
-    if (pos!=0 & pos!=n) {
-      log.prob <- c(log.prob, log(r)*pos + log(1-r)*(n-pos))
-    }
-  }
-  log.prob <- log.prob - max(log.prob)
-  prob <- exp(log.prob)
-  
-  sample(rs, 1, prob=prob/sum(prob))
-}
-
-naive.log.likelihood <- function(diagnosis.tot.j, diagnosis.pos.j) {
-  log.likelihood <- 0
-  for (k in 1:length(diseases)) {
-    log.likelihood <- log.likelihood +
-      log(mean(binomial.likelihood.scan(diagnosis.tot.j[k], diagnosis.pos.j[k])))
-  }
-  log.likelihood
-}
-
-relabel.clusters <- function(cluster.labels, cluster.betas) {
-  cluster.labels.original <- cluster.labels
-  cluster.labels <- cluster.labels.original - 
-    min(cluster.labels.original) + max(cluster.labels.original) + 1
-  clusters <- sort(unique(cluster.labels), decreasing=FALSE)
-  for (k in 1:length(clusters)) {
-    cluster.labels[cluster.labels==clusters[k]] <- k
+    diagnosis.n[m] <- sum(Mutation$Diagnosis == diseases[m])
   }
   
-  cluster.betas.original <- cluster.betas
+  diagnosis.pos <- array(NA, dim=c(length(genes),length(diseases)))
+  diagnosis.tot <- array(NA, dim=c(length(genes),length(diseases)))
+  for (j in 1:length(genes)) {
+    for (m in 1:length(diseases)) {
+      diagnosis.pos[j, m] <- sum(Mutation$Diagnosis == diseases[m] &
+                                   Mutation[, which(genes==genes[j])+5] == 1,
+                                 na.rm = TRUE)
+      diagnosis.tot[j, m] <- sum(Mutation$Diagnosis == diseases[m] &
+                                   !is.na(Mutation[, which(genes==genes[j])+5]),
+                                 na.rm = TRUE)
+    }
+  }
+  colnames(diagnosis.pos) <- diseases
+  rownames(diagnosis.pos) <- genes
+  colnames(diagnosis.tot) <- diseases
+  rownames(diagnosis.tot) <- genes
+  
+  
+  ###dirichlet process clustering###
+  
+  ### helper functions ###
+  rs <- (0:.5e3)/1e3*2
+  
+  binomial.likelihood.scan <- function(n, pos) {
+    prob <- c()
+    for (t in 1:length(rs)) {
+      r <- rs[t]
+      prob <- c(prob, r^pos * (1-r)^(n-pos))
+    }
+    prob
+  }
+  
+  sample.beta <- function(n, pos) {
+    log.prob <- c()
+    for (t in 1:length(rs)) {
+      r <- rs[t]
+      if (pos==0) {
+        log.prob <- c(log.prob, log(1-r)*(n-pos))
+      }
+      if (pos==n) {
+        log.prob <- c(log.prob, log(r)*pos)
+      }
+      if (pos!=0 & pos!=n) {
+        log.prob <- c(log.prob, log(r)*pos + log(1-r)*(n-pos))
+      }
+    }
+    log.prob <- log.prob - max(log.prob)
+    prob <- exp(log.prob)
+    
+    sample(rs, 1, prob=prob/sum(prob))
+  }
+  
+  naive.log.likelihood <- function(diagnosis.tot.j, diagnosis.pos.j) {
+    log.likelihood <- 0
+    for (k in 1:length(diseases)) {
+      log.likelihood <- log.likelihood +
+        log(mean(binomial.likelihood.scan(diagnosis.tot.j[k], diagnosis.pos.j[k])))
+    }
+    log.likelihood
+  }
+  
+  relabel.clusters <- function(cluster.labels, cluster.betas) {
+    cluster.labels.original <- cluster.labels
+    cluster.labels <- cluster.labels.original - 
+      min(cluster.labels.original) + max(cluster.labels.original) + 1
+    clusters <- sort(unique(cluster.labels), decreasing=FALSE)
+    for (k in 1:length(clusters)) {
+      cluster.labels[cluster.labels==clusters[k]] <- k
+    }
+    
+    cluster.betas.original <- cluster.betas
+    cluster.betas <- list()
+    for (k in 1:length(clusters)) {
+      old.label <- cluster.labels.original[cluster.labels==k][1]
+      cluster.betas[[k]] <- cluster.betas.original[[old.label]]
+    }
+    
+    list(cluster.labels=cluster.labels, cluster.betas=cluster.betas)
+  }
+  
+  ###
+  burn.in <- 2500
+  posterior.samples <- 2500
+  
+  cluster.labels <- 1:length(genes)
   cluster.betas <- list()
-  for (k in 1:length(clusters)) {
-    old.label <- cluster.labels.original[cluster.labels==k][1]
-    cluster.betas[[k]] <- cluster.betas.original[[old.label]]
+  for (j in 1:length(genes)) {
+    cluster.betas[[j]] <- array(NA, length(diseases)) 
+    for (m in 1:length(diseases)) {
+      cluster.betas[[j]][m] <- sample.beta(diagnosis.tot[j,m], diagnosis.pos[j,m])
+    }
   }
   
-  list(cluster.labels=cluster.labels, cluster.betas=cluster.betas)
-}
-
-###
-burn.in <- 2500
-posterior.samples <- 2500
-
-cluster.labels <- 1:length(genes)
-cluster.betas <- list()
-for (j in 1:length(genes)) {
-  cluster.betas[[j]] <- array(NA, length(diseases)) 
-  for (m in 1:length(diseases)) {
-    cluster.betas[[j]][m] <- sample.beta(diagnosis.tot[j,m], diagnosis.pos[j,m])
-  }
-}
-
-###
-alpha <- 1e-4
-
-naive.logs <- array(NA, length(genes))
-for (j in 1:length(genes)) {
-  naive.logs[j] <- naive.log.likelihood(diagnosis.tot[j,], diagnosis.pos[j,]) + log(alpha)
-}
-
-for (t in 1:(burn.in+posterior.samples)) {
-  cat('\n', t, ':')
-  for (j in sample(length(genes), length(genes), replace=FALSE)) {
-    
-    naive.log <- naive.logs[j]
-    existing.clusters.log <- array(0, max(cluster.labels))
-    for (k in 1:max(cluster.labels)) {
-      beta <- cluster.betas[[k]]
-      n <- diagnosis.n
-      pos <- diagnosis.pos[j,]
-      existing.clusters.log[k] <- 
-        sum(log(beta^pos)) + sum(log((1-beta)^(n-pos))) + 
-        log(sum(cluster.labels[-j] == k))
-    }
-    
-    offset <- max(c(naive.log, existing.clusters.log))
-    native.log <- naive.log - offset
-    existing.clusters.log <- existing.clusters.log - offset
-    
-    prob <- exp(c(existing.clusters.log, native.log))
-    if (sum(cluster.labels==cluster.labels[j])==1) {
-      prob[cluster.labels[j]] <- 0
-    }
-    prob <- prob / sum(prob)
-    label.j <- sample(1:(max(cluster.labels)+1), 1, prob=prob)
-    
-    if (label.j > max(cluster.labels)) {
-      cluster.labels[j] <- label.j
-      cluster.betas[[label.j]] <- array(NA, length(diseases)) 
-      for (m in 1:length(diseases)) {
-        cluster.betas[[label.j]][m] <- 
-          sample.beta(diagnosis.tot[j,m], diagnosis.pos[j,m])
-      }
-    } else {
-      cluster.labels[j] <- label.j
-      cluster.betas[[label.j]] <- array(NA, length(diseases)) 
-      for (m in 1:length(diseases)) {
-        I <- cluster.labels==label.j
-        cluster.betas[[label.j]][m] <- 
-          sample.beta(diagnosis.tot[j,m]*sum(I), sum(diagnosis.pos[I,m]))
-      }
-    }
-    
-    relabel.out <- relabel.clusters(cluster.labels, cluster.betas)
-    cluster.labels <- relabel.out$cluster.labels
-    cluster.betas <- relabel.out$cluster.betas
-    
-    if (j %% 10 == 0) cat('.')
+  ###
+  alpha <- 1e-4
+  
+  naive.logs <- array(NA, length(genes))
+  for (j in 1:length(genes)) {
+    naive.logs[j] <- naive.log.likelihood(diagnosis.tot[j,], diagnosis.pos[j,]) + log(alpha)
   }
   
-  cat(': ', max(cluster.labels), '\n')
-  cat(' ', sort(table(cluster.labels),decreasing=T)[1:50], '\n')
-}
-
-###
-betas <- array(NA, dim=c(max(cluster.labels), length(diseases)))
-for (k in 1:max(cluster.labels)) {
-  betas[k,] <- cluster.betas[[k]]
-}
-rownames(betas) <- paste('gene cluster', 1:max(cluster.labels))
-colnames(betas) <- diseases
-
-if ( !dir.exists(paste0(savepath, '/dirichlet cluster/'))) {
-  dir.create(paste0(savepath, '/dirichlet cluster/'), recursive = TRUE)
-}
-
-write.csv(betas, file=paste0(savepath, '/dirichlet cluster/kt-betas-2021-11-21.csv'))
-
-###
-for (label.j in 1:max(cluster.labels)) {
-  cluster.betas[[label.j]] <- array(NA, length(diseases)) 
-  for (m in 1:length(diseases)) {
-    I <- cluster.labels==label.j
-    cluster.betas[[label.j]][m] <- 
-      sample.beta(diagnosis.tot[j,m]*sum(I), sum(diagnosis.pos[I,m]))
-  }
-}
-
-###sample from posterior distribution###
-
-cluster.labels.log <- c()
-cluster.betas.log <- list()
-
-for (t in 1:500) {
-  cat('\n', t, ':')
-  for (j in sample(length(genes), length(genes), replace=FALSE)) {
-    naive.log <- naive.log.likelihood(diagnosis.n, diagnosis.pos[j,]) + log(alpha)
-    existing.clusters.log <- array(0, max(cluster.labels))
-    for (k in 1:max(cluster.labels)) {
-      beta <- cluster.betas[[k]]
-      n <- diagnosis.n
-      pos <- diagnosis.pos[j,]
-      existing.clusters.log[k] <- 
-        sum(log(beta^pos)) + sum(log((1-beta)^(n-pos))) + 
-        log(sum(cluster.labels[-j] == k))
-    }
-    
-    offset <- max(c(naive.log, existing.clusters.log))
-    native.log <- naive.log - offset
-    existing.clusters.log <- existing.clusters.log - offset
-    
-    prob <- exp(c(existing.clusters.log, native.log))
-    if (sum(cluster.labels==cluster.labels[j])==1) {
-      prob[cluster.labels[j]] <- 0
-    }
-    prob <- prob / sum(prob)
-    label.j <- sample(1:(max(cluster.labels)+1), 1, prob=prob)
-    
-    if (label.j > max(cluster.labels)) {
-      cluster.labels[j] <- label.j
-      cluster.betas[[label.j]] <- array(NA, length(diseases)) 
-      for (m in 1:length(diseases)) {
-        cluster.betas[[label.j]][m] <- 
-          sample.beta(diagnosis.n[m], diagnosis.pos[j,m])
+  for (t in 1:(burn.in+posterior.samples)) {
+    cat('\n', t, ':')
+    for (j in sample(length(genes), length(genes), replace=FALSE)) {
+      
+      naive.log <- naive.logs[j]
+      existing.clusters.log <- array(0, max(cluster.labels))
+      for (k in 1:max(cluster.labels)) {
+        beta <- cluster.betas[[k]]
+        n <- diagnosis.n
+        pos <- diagnosis.pos[j,]
+        existing.clusters.log[k] <- 
+          sum(log(beta^pos)) + sum(log((1-beta)^(n-pos))) + 
+          log(sum(cluster.labels[-j] == k))
       }
-    } else {
-      cluster.labels[j] <- label.j
-      cluster.betas[[label.j]] <- array(NA, length(diseases)) 
-      for (m in 1:length(diseases)) {
-        I <- cluster.labels==label.j
-        cluster.betas[[label.j]][m] <- 
-          sample.beta(diagnosis.n[m]*sum(I), sum(diagnosis.pos[I,m]))
+      
+      offset <- max(c(naive.log, existing.clusters.log))
+      native.log <- naive.log - offset
+      existing.clusters.log <- existing.clusters.log - offset
+      
+      prob <- exp(c(existing.clusters.log, native.log))
+      if (sum(cluster.labels==cluster.labels[j])==1) {
+        prob[cluster.labels[j]] <- 0
       }
+      prob <- prob / sum(prob)
+      label.j <- sample(1:(max(cluster.labels)+1), 1, prob=prob)
+      
+      if (label.j > max(cluster.labels)) {
+        cluster.labels[j] <- label.j
+        cluster.betas[[label.j]] <- array(NA, length(diseases)) 
+        for (m in 1:length(diseases)) {
+          cluster.betas[[label.j]][m] <- 
+            sample.beta(diagnosis.tot[j,m], diagnosis.pos[j,m])
+        }
+      } else {
+        cluster.labels[j] <- label.j
+        cluster.betas[[label.j]] <- array(NA, length(diseases)) 
+        for (m in 1:length(diseases)) {
+          I <- cluster.labels==label.j
+          cluster.betas[[label.j]][m] <- 
+            sample.beta(diagnosis.tot[j,m]*sum(I), sum(diagnosis.pos[I,m]))
+        }
+      }
+      
+      relabel.out <- relabel.clusters(cluster.labels, cluster.betas)
+      cluster.labels <- relabel.out$cluster.labels
+      cluster.betas <- relabel.out$cluster.betas
+      
+      if (j %% 10 == 0) cat('.')
     }
     
-    relabel.out <- relabel.clusters(cluster.labels, cluster.betas)
-    cluster.labels <- relabel.out$cluster.labels
-    cluster.betas <- relabel.out$cluster.betas
-    
-    if (j %% 10 == 0) cat('.')
+    cat(': ', max(cluster.labels), '\n')
+    cat(' ', sort(table(cluster.labels),decreasing=T)[1:50], '\n')
   }
   
-  cat(' ', max(cluster.labels))
+  ###
+  betas <- array(NA, dim=c(max(cluster.labels), length(diseases)))
+  for (k in 1:max(cluster.labels)) {
+    betas[k,] <- cluster.betas[[k]]
+  }
+  rownames(betas) <- paste('gene cluster', 1:max(cluster.labels))
+  colnames(betas) <- diseases
   
-  if (t %% 1 == 0) {
-    betas <- array(NA, dim=c(max(cluster.labels), length(diseases)))
-    for (k in 1:max(cluster.labels)) {
-      betas[k,] <- cluster.betas[[k]]
+  if ( !dir.exists(paste0(savepath, '/dirichlet cluster/'))) {
+    dir.create(paste0(savepath, '/dirichlet cluster/'), recursive = TRUE)
+  }
+  
+  write.csv(betas, file=paste0(savepath, '/dirichlet cluster/',type_dc,'_kt-betas-2021-11-21.csv'))
+  
+  ###
+  for (label.j in 1:max(cluster.labels)) {
+    cluster.betas[[label.j]] <- array(NA, length(diseases)) 
+    for (m in 1:length(diseases)) {
+      I <- cluster.labels==label.j
+      cluster.betas[[label.j]][m] <- 
+        sample.beta(diagnosis.tot[j,m]*sum(I), sum(diagnosis.pos[I,m]))
+    }
+  }
+  
+  ###sample from posterior distribution###
+  
+  cluster.labels.log <- c()
+  cluster.betas.log <- list()
+  
+  for (t in 1:500) {
+    cat('\n', t, ':')
+    for (j in sample(length(genes), length(genes), replace=FALSE)) {
+      naive.log <- naive.log.likelihood(diagnosis.n, diagnosis.pos[j,]) + log(alpha)
+      existing.clusters.log <- array(0, max(cluster.labels))
+      for (k in 1:max(cluster.labels)) {
+        beta <- cluster.betas[[k]]
+        n <- diagnosis.n
+        pos <- diagnosis.pos[j,]
+        existing.clusters.log[k] <- 
+          sum(log(beta^pos)) + sum(log((1-beta)^(n-pos))) + 
+          log(sum(cluster.labels[-j] == k))
+      }
+      
+      offset <- max(c(naive.log, existing.clusters.log))
+      native.log <- naive.log - offset
+      existing.clusters.log <- existing.clusters.log - offset
+      
+      prob <- exp(c(existing.clusters.log, native.log))
+      if (sum(cluster.labels==cluster.labels[j])==1) {
+        prob[cluster.labels[j]] <- 0
+      }
+      prob <- prob / sum(prob)
+      label.j <- sample(1:(max(cluster.labels)+1), 1, prob=prob)
+      
+      if (label.j > max(cluster.labels)) {
+        cluster.labels[j] <- label.j
+        cluster.betas[[label.j]] <- array(NA, length(diseases)) 
+        for (m in 1:length(diseases)) {
+          cluster.betas[[label.j]][m] <- 
+            sample.beta(diagnosis.n[m], diagnosis.pos[j,m])
+        }
+      } else {
+        cluster.labels[j] <- label.j
+        cluster.betas[[label.j]] <- array(NA, length(diseases)) 
+        for (m in 1:length(diseases)) {
+          I <- cluster.labels==label.j
+          cluster.betas[[label.j]][m] <- 
+            sample.beta(diagnosis.n[m]*sum(I), sum(diagnosis.pos[I,m]))
+        }
+      }
+      
+      relabel.out <- relabel.clusters(cluster.labels, cluster.betas)
+      cluster.labels <- relabel.out$cluster.labels
+      cluster.betas <- relabel.out$cluster.betas
+      
+      if (j %% 10 == 0) cat('.')
     }
     
-    cluster.labels.log <- cbind(cluster.labels.log, cluster.labels)
-    cluster.betas.log[[t]] <- betas
-  }
-}
-
-save(diseases, genes, cluster.labels.log, cluster.betas.log,
-     file = paste0(savepath, '/dirichlet cluster/posterior-2021-11-21.RData'))
-
-####
-top1 <- array(NA, length(genes))
-perc1 <- array(NA, length(genes))
-top2 <- array(NA, length(genes))
-perc2 <- array(NA, length(genes))
-top3 <- array(NA, length(genes))
-perc3 <- array(NA, length(genes))
-
-for (j in 1:length(genes)) {
-  tab <- sort(table(cluster.labels.log[j,]), decreasing=TRUE)
-  if (length(tab)>=1) {
-    top1[j] <- names(tab)[1]
-    perc1[j] <- tab[1]/500
-  }
-  if (length(tab)>=2) {
-    top2[j] <- names(tab)[2]
-    perc2[j] <- tab[2]/500
-  }
-  if (length(tab)>=3) {
-    top3[j] <- names(tab)[3]
-    perc3[j] <- tab[3]/500
-  }
-}
-
-write.csv(data.frame(gene=genes,
-                     top1.cluster=top1,
-                     perc1=perc1,
-                     top2.cluster=top2,
-                     perc2=perc2,
-                     top3.cluster=top3,
-                     perc3=perc3,
-                     diagnosis.pos/diagnosis.tot),
-          file= paste0(savepath, '/dirichlet cluster/label-sample-2021-11-21.csv'))
-
-####
-mean.betas <- array(NA, dim=c(max(cluster.labels), length(diseases)))
-sd.betas <- array(NA, dim=c(max(cluster.labels), length(diseases)))
-for (k in 1:max(cluster.labels)) {
-  for (m in 1:length(diseases)) {
-    temp <- c()
-    for (t in 1:length(cluster.betas.log)) {
-      temp[t] <- cluster.betas.log[[t]][k,m]
+    cat(' ', max(cluster.labels))
+    
+    if (t %% 1 == 0) {
+      betas <- array(NA, dim=c(max(cluster.labels), length(diseases)))
+      for (k in 1:max(cluster.labels)) {
+        betas[k,] <- cluster.betas[[k]]
+      }
+      
+      cluster.labels.log <- cbind(cluster.labels.log, cluster.labels)
+      cluster.betas.log[[t]] <- betas
     }
-    mean.betas[k,m] <- mean(temp)
-    sd.betas[k,m] <- sd(temp)
   }
-}
-
-rownames(mean.betas) <- paste('gene cluster', 1:max(cluster.labels))
-colnames(mean.betas) <- diseases
-
-rownames(sd.betas) <- paste('gene cluster', 1:max(cluster.labels))
-colnames(sd.betas) <- diseases
-
-write.csv(mean.betas, file = paste0(savepath, '/dirichlet cluster/mean-betas-2021-11-21.csv'))
-write.csv(sd.betas, file = paste0(savepath, '/dirichlet cluster/sd-betas-2021-11-21.csv'))
-
-####
-for (i in 1:max(cluster.labels)) {
-  I <- top1==i & perc1>0.0
-  cat('cluster', i, ": ")
+  
+  save(diseases, genes, cluster.labels.log, cluster.betas.log,
+       file = paste0(savepath, '/dirichlet cluster/',type_dc,'_posterior-2021-11-21.RData'))
+  
+  ####
+  top1 <- array(NA, length(genes))
+  perc1 <- array(NA, length(genes))
+  top2 <- array(NA, length(genes))
+  perc2 <- array(NA, length(genes))
+  top3 <- array(NA, length(genes))
+  perc3 <- array(NA, length(genes))
+  
+  for (j in 1:length(genes)) {
+    tab <- sort(table(cluster.labels.log[j,]), decreasing=TRUE)
+    if (length(tab)>=1) {
+      top1[j] <- names(tab)[1]
+      perc1[j] <- tab[1]/500
+    }
+    if (length(tab)>=2) {
+      top2[j] <- names(tab)[2]
+      perc2[j] <- tab[2]/500
+    }
+    if (length(tab)>=3) {
+      top3[j] <- names(tab)[3]
+      perc3[j] <- tab[3]/500
+    }
+  }
+  
+  write.csv(data.frame(gene=genes,
+                       top1.cluster=top1,
+                       perc1=perc1,
+                       top2.cluster=top2,
+                       perc2=perc2,
+                       top3.cluster=top3,
+                       perc3=perc3,
+                       diagnosis.pos/diagnosis.tot),
+            file= paste0(savepath, '/dirichlet cluster/',type_dc,'_label-sample-2021-11-21.csv'))
+  
+  ####
+  mean.betas <- array(NA, dim=c(max(cluster.labels), length(diseases)))
+  sd.betas <- array(NA, dim=c(max(cluster.labels), length(diseases)))
+  for (k in 1:max(cluster.labels)) {
+    for (m in 1:length(diseases)) {
+      temp <- c()
+      for (t in 1:length(cluster.betas.log)) {
+        temp[t] <- cluster.betas.log[[t]][k,m]
+      }
+      mean.betas[k,m] <- mean(temp)
+      sd.betas[k,m] <- sd(temp)
+    }
+  }
+  
+  rownames(mean.betas) <- paste('gene cluster', 1:max(cluster.labels))
+  colnames(mean.betas) <- diseases
+  
+  rownames(sd.betas) <- paste('gene cluster', 1:max(cluster.labels))
+  colnames(sd.betas) <- diseases
+  
+  write.csv(mean.betas, file = paste0(savepath, '/dirichlet cluster/',type_dc,'_mean-betas-2021-11-21.csv'))
+  write.csv(sd.betas, file = paste0(savepath, '/dirichlet cluster/',type_dc,'_sd-betas-2021-11-21.csv'))
+  
+  ####
+  for (i in 1:max(cluster.labels)) {
+    I <- top1==i & perc1>0.0
+    cat('cluster', i, ": ")
+    genes.subset <- genes[I]
+    for (j in 1:length(genes.subset)) {
+      cat(genes.subset[j], " ")
+    }
+    cat('\n')
+  }
+  I <- perc1<=0.0
   genes.subset <- genes[I]
+  cat("Not confidently clustered: ")
   for (j in 1:length(genes.subset)) {
     cat(genes.subset[j], " ")
   }
   cat('\n')
 }
-I <- perc1<=0.0
-genes.subset <- genes[I]
-cat("Not confidently clustered: ")
-for (j in 1:length(genes.subset)) {
-  cat(genes.subset[j], " ")
-}
-cat('\n')
-
 
 print("-----------------derichlet  cluster done -------------")
 
@@ -1705,8 +1710,8 @@ genes.ML <- c('CALR', 'IDH1', 'ARID1A', 'ARID2', 'ASXL1', 'ATM', 'BCOR', 'BCORL1
 genes.L <- c('JAK2')
 genes <- c(genes.R, genes.MR, genes.ML, genes.L)
 
-gene.cluster.data.raw <- read.csv(paste0(savepath, '/dirichlet cluster_mutation/', "label-sample-2021-11-21.csv"))
-kar.cluster.data.raw <- read.csv(paste0(savepath, '/dirichlet cluster-karyotype/', "label-sample-2021-11-21.csv"))
+gene.cluster.data.raw <- read.csv(paste0(savepath, '/dirichlet cluster/', "mutation_label-sample-2021-11-21.csv"))
+kar.cluster.data.raw <- read.csv(paste0(savepath, '/dirichlet cluster/', "karyotype_label-sample-2021-11-21.csv"))
 gene.cluster.group <- data.frame(cluster = seq(1, 12, 1), cluster_group = sprintf("G%02d",c(2, 4, 6, 5, 9, 12, 1, 10, 7, 11, 8, 3)))
 kar.cluster.group <- data.frame(cluster = seq(1, 7, 1), cluster_group = sprintf("K%02d",c(5, 7, 4, 6, 3, 1, 2)))
 gene.group.data1 <- merge(gene.cluster.data.raw, gene.cluster.group, by.x = 'top1.cluster', by.y = 'cluster')
@@ -1772,7 +1777,7 @@ write.csv(t(as.matrix(cor.gene.trait.data[, 1:length(gene.group)])), paste0(save
 
 my_palette <- colorRampPalette(c("green", "gray", "red"))
 jpeg(filename = paste0(savepath, '/MYE/cor/cor_gene_trait.jpg'),
-    width = 900 * 3, height = 3 * 600, res = 96 * 3)
+     width = 900 * 3, height = 3 * 600, res = 96 * 3)
 gplots::heatmap.2(t(as.matrix(cor.gene.trait.data[, 1:length(gene.group)])), Rowv = NA, Colv = NA,
                   dendrogram = "none", density.info = "none",
                   labRow = gene.group[1:length(gene.group)], labCol = trait_ranks[, 2], trace = "none",
@@ -1870,7 +1875,7 @@ write.csv(t(as.matrix(cor.gene.kar.data[, 1:length(gene.group)])), paste0(savepa
 
 my_palette <- colorRampPalette(c("green", "gray", "red"))
 jpeg(filename = paste0(savepath, '/MYE/cor/cor_kar_gene_total.jpg'),
-    width = 900 * 3, height = 3 * 600, res = 96 * 3)
+     width = 900 * 3, height = 3 * 600, res = 96 * 3)
 gplots::heatmap.2(t(as.matrix(cor.gene.kar.data[, 1:length(gene.group)])), Rowv = NA, Colv = NA,
                   dendrogram = "none", density.info = "none",
                   labRow = gene.group[1:length(gene.group)], labCol = kar.group, trace = "none",
@@ -1891,10 +1896,10 @@ print("-----------------------------Group testing of gene and traits -----------
 ############## AML response ################ 
 
 AML.data_subset <- cligene.data[cligene.data$Diagnosis == 'AML'&
-                                     cligene.data$`M3 (for AML)` !=1 &
-                                     !is.na(cligene.data$`MRD (for AML)`) &
-                                     cligene.data$Age > 16 &
-                                     cligene.data$treatment == "Pure conventional treatment",]
+                                  cligene.data$`M3 (for AML)` !=1 &
+                                  !is.na(cligene.data$`MRD (for AML)`) &
+                                  cligene.data$Age > 16 &
+                                  cligene.data$treatment == "Pure conventional treatment",]
 
 
 I <-   AML.data_subset$SRSF2 == 0 &
