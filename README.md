@@ -51,6 +51,8 @@ This project is the implementation of THAMP algorithm presented in "A phenogenet
 
 + Cairo == 1.5-12.2
 
++ pROC == 1.18.0
+
 ### Any required non-standard hardware:
 Not Applicable
 
@@ -92,21 +94,20 @@ Not Applicable
 
 * Lines 74-171 project all myeloid patients onto the Pan-Myeloid Axis.
 
-* Lines 175-521 perform Dirichlet clustering to generate Fig. 3A and Fig. 3B. 
-(For mutation clustering, set "mutation_or_karyotype <- mutation" at line 181.
- For karyotype clustering, "mutation_or_karyotype <- karyotype" at line 181.) 
+* Lines 175-526 perform Dirichlet clustering to generate Fig. 3A and Fig. 3B. 
+(For  both mutation clustering and karyotype clustering) 
 
-* Lines 524-845 define helper functions for calculating kernel densities of diseases, traits, and gene mutations.
+* Lines 529-850 define helper functions for calculating kernel densities of diseases, traits, and gene mutations.
 
-* Lines 849-1106 generate Figs. 5B and 5C, saved in "../output/MYE/2d" folder.
+* Lines 854-1111 generate Figs. 5B and 5C, saved in "../output/MYE/2d" folder.
 
-* Lines 1109-1284 perform 100 bootstrapping experiments on the sorting of diseases, traits, and gene mutations; results are save in "../output/MYE/" folder.
+* Lines 1114-1289 perform 100 bootstrapping experiments on the sorting of diseases, traits, and gene mutations; results are save in "../output/MYE/" folder.
 
-* Lines 1290-1453 performed stability analysis; the results are stored in  "../output/MYE/mean_test" folder.
+* Lines 1295-1458 performed stability analysis; the results are stored in  "../output/MYE/mean_test" folder.
 
-* Lines 1457-1673 generate Figs. 5D and 5E.
+* Lines 1462-1678 generate Figs. 5D and 5E.
 
-* Lines 1678-1883 calculate correlation coefficients. 
+* Lines 1683-1888 calculate correlation coefficients. 
 
 * Use "../output/MYE/cor/cor_kar_gene_total.csv" to generate Fig. 3C.
 
@@ -118,21 +119,21 @@ Not Applicable
 
 * The gene groups used for computing Fig. 7 are from the analysis explained in Fig. 6A. 
 
-* Lines 1891-2000 analyzes treatment outcome in AML. 
+* Lines 1896-2005 analyzes treatment outcome in AML. 
 
-* Lines 1947-1955 generate Fig. 7B.
+* Lines 1952-1960 generate Fig. 7B.
 
-* Lines 1958-1966 generate Fig. 7D.
+* Lines 1963-1971 generate Fig. 7D.
 
-* Lines 1971-1997 generate Fig. 7E.
+* Lines 1976-2002 generate Fig. 7E.
 
-* Lines 2001-2052 analyzes treatment outcome in MDS. 
+* Lines 2006-2057 analyzes treatment outcome in MDS. 
 
-* Lines 2029-2033 generate Fig. 8A.
+* Lines 2034-2038 generate Fig. 8A.
 
-* Lines 2035-2043 generate Fig. 8B.
+* Lines 2040-2048 generate Fig. 8B.
 
-* Lines 2047-2052 generate Fig. 8C.
+* Lines 2052-2057 generate Fig. 8C.
 
 
 ## 4. POSTSCRIPT
