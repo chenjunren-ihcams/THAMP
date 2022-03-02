@@ -32,11 +32,11 @@ option_list <- list(
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
-root<- "THAMP/src"
+root<- "THAMP-data-and-code/src"
 setwd(root)
 opt$indir <- '../output/2d_full_data/'
 opt$outdir <- '../output/'
-opt$data <- '../data/data-2022-02-28.xlsx'
+opt$data <- '../data/data-2022-03-02.xlsx'
 
 
 
@@ -1685,7 +1685,7 @@ print("----------------------------All patient results done!-----------")
 
 ###Group testing of gene and traits####
 cligene.data1 <- apply(cligene.data[, -1:-(tra.num.start - 1)], 2, as.numeric)
-cligene.data <- cbind(cligene.data[, 1:(tra.num.start - 1)], cligene.data1)
+cligene.data2 <- cbind(cligene.data[, 1:(tra.num.start - 1)], cligene.data1)
 cligene.data.MYE1 <- apply(cligene.data.MYE[, -1:-(tra.num.start - 1)], 2, as.numeric)
 cligene.data.MYE <- cbind(cligene.data.MYE[, 1:(tra.num.start - 1)], cligene.data.MYE1)
 cligene.data.LYM1 <- apply(cligene.data.LYM[, -1:-(tra.num.start - 1)], 2, as.numeric)
@@ -1851,10 +1851,10 @@ for (k in 1:length(disease1)) {
 cor.gene.kar.data <- array(NA, dim = c(length(kar.group), length(gene.group)))
 for (i in 1:length(kar.group)) {
   kar <- kar.group.data[kar.group.data$cluster_group == kar.group[i], ]$gene
-  kar.data <- rowSums(as.data.frame(cligene.data[, kar]), na.rm = T)
+  kar.data <- rowSums(as.data.frame(cligene.data2[, kar]), na.rm = T)
   for (j in 1:length(gene.group)) {
     gene <- gene.group.data[gene.group.data$cluster_group == gene.group[j], ]$gene
-    gene.data <- rowSums(as.data.frame(cligene.data[, gene]), na.rm = T)
+    gene.data <- rowSums(as.data.frame(cligene.data2[, gene]), na.rm = T)
     cor.num <- try(cor(kar.data, gene.data))
     
     if(!is.error(cor.num)){
@@ -1899,7 +1899,7 @@ AML.data_subset <- cligene.data[cligene.data$Diagnosis == 'AML'&
                                   cligene.data$`M3 (for AML)` !=1 &
                                   !is.na(cligene.data$`MRD (for AML)`) &
                                   cligene.data$Age > 16 &
-                                  cligene.data$treatment == "Pure conventional treatment",]
+                                  cligene.data$treatment == "Standard induction therapy",]
 
 
 I <-   AML.data_subset$SRSF2 == 0 &
