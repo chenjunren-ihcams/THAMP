@@ -17,7 +17,7 @@ from sklearn.decomposition import PCA
 import joblib
 
 #input_data
-input_file="../data-2022-02-28.xlsx"
+input_file="../data-2022-03-02.xlsx"
 #patient_total
 patient_total=1192
 
